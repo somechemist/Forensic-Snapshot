@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Written by Justin Powell
 # 02/16/2022
@@ -11,6 +11,8 @@
 # Configure these variables to match your needs
 MAX_LOAD=3 #load average max allowed value
 LOAD_RATIO=2 #biggest possible difference second-to-second in load average
+mkdir /var/log/forensics &> /dev/null
+mkdir /var/log/forensics/snapshots &> /dev/null
 CD_PATH=/var/log/forensics/snapshots/
 FILE_NAME=/var/log/forensics/snapshots/snapshot_$HOSTNAME.txt
 RFILE_NAME=/var/log/forensics/snapshots/snapshot_$HOSTNAME.txt.1
@@ -18,6 +20,7 @@ RRFILE_NAME=/var/log/forensics/snapshots/snapshot_$HOSTNAME.txt.2
 
 #
 # Static, Should not need changed
+cd $CD_PATH;
 multiplier=100000
 MAX_LOAD=$(awk '{print $1*$2}' <<<"${MAX_LOAD} ${multiplier}")
 LOAD_RATIO=$(awk '{print $1*$2}' <<<"${LOAD_RATIO} ${multiplier}")
@@ -30,30 +33,39 @@ buffer=""
 while [ "$alert" != "true" ];
 do
     #
-    # After 60 logs, the top 30 are removed. Changing these to Cases might make this look a lot better
+    # After 120 logs, the top 120 are removed. Changing these to Cases might make this look a lot better
     if [ "$scmin" != "true" ] && (( "$scount" >= 120 ));
     then
         scmin="true"
-        #~~~sed or awk
-        scount=$((0+0))
+        cd $CD_PATH;
+        touch buffer.txt;
+        echo -e "$buffer" > buffer.txt;
+        sed '1,60d' buffer.txt buffer.txt;
+        buffer="$(<buffer.txt)";
+        rm buffer.txt;
+        scount=$((0+0));
     fi
     #
-    # Now every logs, the first 30 will be removed
+    # Now every logs, the first 60 will be removed
     if [ "$scmin" == "true" ] && (( "$scount" >= 60 ));
     then
-        #~~~sed or awk
-        scount=$((0+0))
+        cd $CD_PATH;
+        touch buffer.txt;
+        echo -e "$buffer" > buffer.txt;
+        sed -i '1,60d' buffer.txt;
+        buffer="$(<buffer.txt)";
+        rm buffer.txt;
+        scount=$((0+0));
     fi
     #
     # This is where the magic happens. Load averages are saved in a buffer
-    
     var=$(uptime | cut -d ' ' -f 14 | rev | cut -c 2- | rev)
-    buffer+="$(date)        $var\n"
+    buffer+="\n$(date)        $var"
     sleep 1
     scount=$(($scount+1))
     
     nvar=$(uptime | cut -d ' ' -f 14 | rev | cut -c 2- | rev)
-    buffer+="$(date)       $nvar\n"
+    buffer+="\n$(date)       $nvar"
     sleep 1
     scount=$(($scount+1))
     
@@ -65,13 +77,12 @@ do
     
     #
     # This block will make and rotate log files && dump the buffer to a file if it executes
-    
     if (( $result>=$LOAD_RATIO )) || (( $var>=$MAX_LOAD )) || (( $nvar>=$MAX_LOAD ));
     then
         #
         # It is possible to infinite loop, this will prevent that and log the error
         load_count=$(($load_count+1))
-        if (( $load_count>=3 ));
+        if (( $load_count>=30 ));
         then
             ErrorMSG="Script got caught in an infinite loop during the log rotation. Please increase the MAX_LOAD and/or LOAD_RATIO";
             ErrFILE=/var/log/forensics/snapshots/error.txt;
@@ -84,9 +95,6 @@ do
         fi
         #
         # Generate/Rotate directories and files
-        mkdir /var/log/forensics &> /dev/null
-        mkdir /var/log/forensics/snapshots &> /dev/null
-        cd $CD_PATH;
         if [[ -f "$FILE_NAME" ]];
         then
             if [[ -f "$RFILE_NAME" ]]; then
