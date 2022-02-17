@@ -17,7 +17,9 @@ CD_PATH=/var/log/forensics/snapshots/
 FILE_NAME=/var/log/forensics/snapshots/snapshot_$HOSTNAME.txt
 RFILE_NAME=/var/log/forensics/snapshots/snapshot_$HOSTNAME.txt.1
 RRFILE_NAME=/var/log/forensics/snapshots/snapshot_$HOSTNAME.txt.2
-
+SSMF=/var/log/forensics/snapshots/MASTER_snapshot_$HOSTNAME.txt
+SSMFT=/var/log/forensics/snapshots/MASTER_snapshot_$HOSTNAME.txt.1
+SSMFTh=/var/log/forensics/snapshots/MASTER_snapshot_$HOSTNAME.txt.2
 #
 # Static, Should not need changed
 cd $CD_PATH;
@@ -30,25 +32,20 @@ scmin="false"
 load_count=$((0+0))
 buffer=""
 
-while [ "$alert" != "true" ];
-do
-    #
-    # After 120 logs, the top 120 are removed. Changing these to Cases might make this look a lot better
-    if [ "$scmin" != "true" ] && (( "$scount" >= 120 ));
-    then
-        scmin="true"
-        cd $CD_PATH;
-        touch buffer.txt;
-        echo -e "$buffer" > buffer.txt;
-        sed '1,60d' buffer.txt buffer.txt;
-        buffer="$(<buffer.txt)";
-        rm buffer.txt;
-        scount=$((0+0));
-    fi
-    #
-    # Now every logs, the first 60 will be removed
-    if [ "$scmin" == "true" ] && (( "$scount" >= 60 ));
-    then
+write_to_file () {
+
+        echo "           DATE                    LOAD AVG" >> $FILE_NAME;
+        echo -e "$buffer" >> $FILE_NAME;
+        echo -e "\nPrinting syslog\n" >> $FILE_NAME;
+        echo "$(tail -n 20 /var/log/syslog)" >> $FILE_NAME;
+        echo -e "\nPrinting dmesg\n" >> $FILE_NAME;
+        echo "$(tail -n 20 /var/log/dmesg)" >> $FILE_NAME;
+        echo -e "\nPrinting last 10 of each apache log\n" >> $FILE_NAME;
+        echo "$(tail -n 10 /var/log/apache2/*.log)" >> $FILE_NAME;
+        echo -e "\nPrinting netstat\n" >> $FILE_NAME;
+        echo "$(netstat)" >> $FILE_NAME;
+}
+trim_buffer () {
         cd $CD_PATH;
         touch buffer.txt;
         echo -e "$buffer" > buffer.txt;
@@ -56,42 +53,58 @@ do
         buffer="$(<buffer.txt)";
         rm buffer.txt;
         scount=$((0+0));
+}
+
+while :
+do
+    #
+    # After 120 logs, the top 120 are removed. Changing these to Cases might make this look a lot better
+    if [ "$scmin" != "true" ] && (( "$scount" >= 120 ));
+    then
+        scmin="true"
+        cd $CD_PATH;
+        trim_buffer
+    fi
+    #
+    # Now every logs, the first 60 will be removed
+    if [ "$scmin" == "true" ] && (( "$scount" >= 60 ));
+    then
+        cd $CD_PATH;
+        trim_buffer
     fi
     #
     # This is where the magic happens. Load averages are saved in a buffer
     var=$(uptime | cut -d ' ' -f 14 | rev | cut -c 2- | rev)
-    buffer+="\n$(date)        $var"
+    nvar=$(awk '{print $1*$2}' <<<"${var} ${multiplier}")
+    buffer+="\n$(date)        $var\n$(free -h)\n"
     sleep 1
     scount=$(($scount+1))
-    
-    nvar=$(uptime | cut -d ' ' -f 14 | rev | cut -c 2- | rev)
-    buffer+="\n$(date)       $nvar"
-    sleep 1
-    scount=$(($scount+1))
-    
-    var=$(awk '{print $1*$2}' <<<"${var} ${multiplier}")
-    nvar=$(awk '{print $1*$2}' <<<"${nvar} ${multiplier}")
-    
-    result=$(awk '{print $1-$2}' <<<"${nvar} ${var}")
-    result=$(awk '{print $1*$2}' <<<"${result} ${multiplier}")
     
     #
     # This block will make and rotate log files && dump the buffer to a file if it executes
-    if (( $result>=$LOAD_RATIO )) || (( $var>=$MAX_LOAD )) || (( $nvar>=$MAX_LOAD ));
+    if (( $nvar>=$MAX_LOAD ));
     then
         #
         # It is possible to infinite loop, this will prevent that and log the error
         load_count=$(($load_count+1))
-        if (( $load_count>=30 ));
+        if (( $load_count>=3 ));
         then
-            ErrorMSG="Script got caught in an infinite loop during the log rotation. Please increase the MAX_LOAD and/or LOAD_RATIO";
+            cd $CD_PATH;
+            ErrorMSG="You have written to all three log files, waiting";
             ErrFILE=/var/log/forensics/snapshots/error.txt;
             touch $ErrFILE;
-            echo -e "Fatal Error $(date) $ErrorMSG\n"  >> $ErrFILE;
-            #
-            # If it somehow fails to exit here, setting alert to true should break the parent loop
-            alert="true"
-            exit 1
+            echo -e "Master File Created $(date) $ErrorMSG\n"  >> $ErrFILE;
+            if [[ -f "$SSMF" ]];
+            then
+                if [[ -f "$SSMFT" ]]; then
+                    mv $SSMFT $SSMFTh
+                fi
+                mv $SSMF $SSMFT
+            fi
+            touch $SSMF;
+            cat $RRFILE_NAME $RFILE_NAME $FILE_NAME > $SSMF;
+            sleep 10
+            load_count=$((0+0))
         fi
         #
         # Generate/Rotate directories and files
@@ -103,17 +116,6 @@ do
             mv $FILE_NAME $RFILE_NAME
         fi
         touch $FILE_NAME;
-        #
-        # Generate log file from buffer. Make changes here as needed.
-        echo "           DATE                    LOAD AVG" >> $FILE_NAME;
-        echo -e "$buffer" >> $FILE_NAME;
-        echo -e "\nPrinting syslog\n" >> $FILE_NAME;
-        echo "$(tail -n 20 /var/log/syslog)" >> $FILE_NAME;
-        echo -e "\nPrinting dmesg\n" >> $FILE_NAME;
-        echo "$(tail -n 20 /var/log/dmesg)" >> $FILE_NAME;
-        echo -e "\nPrinting last 10 of each apache log\n" >> $FILE_NAME;
-        echo "$(tail -n 10 /var/log/apache2/*.log)" >> $FILE_NAME;
-        echo -e "\nPrinting netstat\n" >> $FILE_NAME;
-        echo "$(netstat)" >> $FILE_NAME;
+        write_to_file
     fi
 done
