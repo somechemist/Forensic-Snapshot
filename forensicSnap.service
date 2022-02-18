@@ -1,0 +1,10 @@
+[Unit]
+Description=Runs the forensicSnap.sh script and logs information during high load
+StandardOutput=append:/var/log/forensics/snapshots/error.log
+StandardError=append:/var/log/forensics/snapshots/error.log
+
+[Service]
+ExecStart=/usr/local/bin/forensicSnap.sh
+
+[Install]
+WantedBy=multi-user.target
