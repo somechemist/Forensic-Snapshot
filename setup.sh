@@ -11,6 +11,10 @@ sudo mkdir /var/log/forensics &> /dev/null
 sudo mkdir /var/log/forensics/snapshots &> /dev/null
 #
 # Copies associated files to correct directory
+sudo chmod +x forensicSnap.sh
 sudo cp forensicsSnap.sh /usr/local/bin/forensicsSnap;
 sudo cp forensicsSnap.service /lib/systemd/system/forensicsSnap.service;
 sudo touch /var/log/forensics/snapshots/error.log;
+#
+# Uncomment next line for total automation with this script
+# sudo systemctl daemon-reload; sudo systemctl enable forensicSnap.service; sudo systemctl start forensicSnap.service;
