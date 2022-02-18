@@ -8,30 +8,38 @@
 
 
 #
-# Configure these variables to match your needs
+# Configure this variables to match your needs
 MAX_LOAD=3 #load average max allowed value
-LOAD_RATIO=2 #biggest possible difference second-to-second in load average
-mkdir /var/log/forensics &> /dev/null
-mkdir /var/log/forensics/snapshots &> /dev/null
+#
+#Match the variables to the directories set in setup.sh (current settings match)
 CD_PATH=/var/log/forensics/snapshots/
-FILE_NAME=/var/log/forensics/snapshots/snapshot_$HOSTNAME.txt
-RFILE_NAME=/var/log/forensics/snapshots/snapshot_$HOSTNAME.txt.1
-RRFILE_NAME=/var/log/forensics/snapshots/snapshot_$HOSTNAME.txt.2
-SSMF=/var/log/forensics/snapshots/MASTER_snapshot_$HOSTNAME.txt
-SSMFT=/var/log/forensics/snapshots/MASTER_snapshot_$HOSTNAME.txt.1
-SSMFTh=/var/log/forensics/snapshots/MASTER_snapshot_$HOSTNAME.txt.2
+FILE_NAME=/var/log/forensics/snapshots/snapshot_$HOSTNAME.log
+RFILE_NAME=/var/log/forensics/snapshots/snapshot_$HOSTNAME.log.1
+RRFILE_NAME=/var/log/forensics/snapshots/snapshot_$HOSTNAME.log.2
+SSMF=/var/log/forensics/snapshots/MASTER_snapshot_$HOSTNAME.log
+SSMFT=/var/log/forensics/snapshots/MASTER_snapshot_$HOSTNAME.log.1
+SSMFTh=/var/log/forensics/snapshots/MASTER_snapshot_$HOSTNAME.log.2
+ErrFILE=/var/log/forensics/snapshots/error.log;
+RErrFILE=/var/log/forensics/snapshots/error.log.1;
 #
 # Static, Should not need changed
 cd $CD_PATH;
 multiplier=100000
 MAX_LOAD=$(awk '{print $1*$2}' <<<"${MAX_LOAD} ${multiplier}")
-LOAD_RATIO=$(awk '{print $1*$2}' <<<"${LOAD_RATIO} ${multiplier}")
 alert="false"
 scount=$((0+0))
 scmin="false"
 load_count=$((0+0))
 buffer=""
-
+#
+# Rotate Error log
+if [[ -f "$ErrFILE" ]];
+then
+    touch $RErrFILE
+    mv $ErrFILE $RErrFILE
+fi
+#
+# Functions
 write_to_file () {
 
         echo "           DATE                    LOAD AVG" >> $FILE_NAME;
@@ -91,8 +99,6 @@ do
         then
             cd $CD_PATH;
             ErrorMSG="You have written to all three log files, waiting";
-            ErrFILE=/var/log/forensics/snapshots/error.txt;
-            touch $ErrFILE;
             echo -e "Master File Created $(date) $ErrorMSG\n"  >> $ErrFILE;
             if [[ -f "$SSMF" ]];
             then
