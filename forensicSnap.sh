@@ -10,6 +10,7 @@
 #
 # Configure this variables to match your needs
 MAX_LOAD=3 #load average max allowed value
+MAX_SIZE=0.4 #Max allowed size for the log files in MB
 #
 #Match the variables to the directories set in setup.sh (current settings match)
 CD_PATH=/var/log/forensics/snapshots/
@@ -26,10 +27,13 @@ RErrFILE=/var/log/forensics/snapshots/error.log.1;
 cd $CD_PATH;
 multiplier=100000
 MAX_LOAD=$(awk '{print $1*$2}' <<<"${MAX_LOAD} ${multiplier}")
+MAX_SIZE=$(awk '{print $1*$2}' <<<"${MAX_SIZE} ${multiplier}")
 alert="false"
 scount=$((0+0))
 scmin="false"
 load_count=$((0+0))
+KILL_SWITCH=$((0+0))
+FILE_SIZE=$((0+0))
 buffer=""
 #
 # Rotate Error log
@@ -63,7 +67,7 @@ trim_buffer () {
         scount=$((0+0));
 }
 
-while :
+while [ $KILL_SWITCH < 1 ];
 do
     #
     # After 120 logs, the top 120 are removed. Changing these to Cases might make this look a lot better
@@ -87,7 +91,31 @@ do
     buffer+="\n$(date)        $var\n$(free -h)\n"
     sleep 1
     scount=$(($scount+1))
-    
+    FILE_SIZE="$(stat -c%s "FILE_NAME")"
+    if (( $FILE_SIZE > $MAX_SIZE ));
+    then
+	KILL_SWITCH=$KILL_SWITCH+1; service forensicSnap stop && echo "Max file size exceeded" >> $ErrFILE;
+    fi
+    FILE_SIZE="$(stat -c%s "RFILE_NAME")"
+    if (( $FILE_SIZE > $MAX_SIZE ));
+    then
+        KILL_SWITCH=$KILL_SWITCH+1; service forensicSnap stop && echo "Max file size exceeded" >> $ErrFILE;
+    fi
+    FILE_SIZE="$(stat -c%s "RRFILE_NAME")"
+    if (( $FILE_SIZE > $MAX_SIZE ));
+    then
+        KILL_SWITCH=$KILL_SWITCH+1; service forensicSnap stop && echo "Max file size exceeded" >> $ErrFILE;
+    fi
+    FILE_SIZE="$(stat -c%s "ErrFILE")"
+    if (( $FILE_SIZE > $MAX_SIZE ));
+    then
+        KILL_SWITCH=$KILL_SWITCH+1; service forensicSnap stop && echo "Max file size exceeded" >> $ErrFILE;
+    fi
+    FILE_SIZE="$(stat -c%s "RErrFILE")"
+    if (( $FILE_SIZE > $MAX_SIZE ));
+    then
+        KILL_SWITCH=$KILL_SWITCH+1; service forensicSnap stop && echo "Max file size exceeded" >> $ErrFILE;
+    fi
     #
     # This block will make and rotate log files && dump the buffer to a file if it executes
     if (( $nvar>=$MAX_LOAD ));
