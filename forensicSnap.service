@@ -4,7 +4,7 @@ StandardOutput=append:/var/log/forensics/snapshots/error.log
 StandardError=append:/var/log/forensics/snapshots/error.log
 
 [Service]
-ExecStart=/usr/local/bin/forensicSnap.sh
+ExecStart=/usr/local/bin/forensicSnap
 
 [Install]
 WantedBy=multi-user.target
