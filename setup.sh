@@ -12,8 +12,8 @@ sudo mkdir /var/log/forensics/snapshots &> /dev/null
 #
 # Copies associated files to correct directory
 sudo chmod +x forensicSnap.sh
-sudo cp forensicsSnap.sh /usr/local/bin/forensicsSnap;
-sudo cp forensicsSnap.service /lib/systemd/system/forensicsSnap.service;
+sudo cp forensicSnap.sh /usr/local/bin/forensicSnap;
+sudo cp forensicSnap.service /lib/systemd/system/forensicSnap.service;
 sudo touch /var/log/forensics/snapshots/error.log;
 #
 # Uncomment next line for total automation with this script
