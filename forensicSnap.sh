@@ -91,27 +91,27 @@ do
     buffer+="\n$(date)        $var\n$(free -h)\n"
     sleep 1
     scount=$(($scount+1))
-    FILE_SIZE="$(stat -c%s "FILE_NAME")"
+    FILE_SIZE="$(stat -c%s "$FILE_NAME")"
     if (( $FILE_SIZE > $MAX_SIZE ));
     then
 	KILL_SWITCH=$KILL_SWITCH+1; service forensicSnap stop && echo "Max file size exceeded" >> $ErrFILE;
     fi
-    FILE_SIZE="$(stat -c%s "RFILE_NAME")"
+    FILE_SIZE="$(stat -c%s "$RFILE_NAME")"
     if (( $FILE_SIZE > $MAX_SIZE ));
     then
         KILL_SWITCH=$KILL_SWITCH+1; service forensicSnap stop && echo "Max file size exceeded" >> $ErrFILE;
     fi
-    FILE_SIZE="$(stat -c%s "RRFILE_NAME")"
+    FILE_SIZE="$(stat -c%s "$RRFILE_NAME")"
     if (( $FILE_SIZE > $MAX_SIZE ));
     then
         KILL_SWITCH=$KILL_SWITCH+1; service forensicSnap stop && echo "Max file size exceeded" >> $ErrFILE;
     fi
-    FILE_SIZE="$(stat -c%s "ErrFILE")"
+    FILE_SIZE="$(stat -c%s "$ErrFILE")"
     if (( $FILE_SIZE > $MAX_SIZE ));
     then
         KILL_SWITCH=$KILL_SWITCH+1; service forensicSnap stop && echo "Max file size exceeded" >> $ErrFILE;
     fi
-    FILE_SIZE="$(stat -c%s "RErrFILE")"
+    FILE_SIZE="$(stat -c%s "$RErrFILE")"
     if (( $FILE_SIZE > $MAX_SIZE ));
     then
         KILL_SWITCH=$KILL_SWITCH+1; service forensicSnap stop && echo "Max file size exceeded" >> $ErrFILE;
