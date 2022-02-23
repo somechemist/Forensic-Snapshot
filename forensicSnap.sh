@@ -35,6 +35,7 @@ load_count=$((0+0))
 KILL_SWITCH=$((0+0))
 FILE_SIZE=$((0+0))
 buffer=""
+touch $FILE_NAME $RFILE_NAME $RRFILE_NAME $SSMF $SSMFT $SSMFTh $ErrFILE $RErrFILE
 #
 # Rotate Error log
 if [[ -f "$ErrFILE" ]];
@@ -66,8 +67,7 @@ trim_buffer () {
         rm buffer.txt;
         scount=$((0+0));
 }
-
-while [ $KILL_SWITCH < 1 ];
+while (( $KILL_SWITCH < 1 ));
 do
     #
     # After 120 logs, the top 120 are removed. Changing these to Cases might make this look a lot better
@@ -122,7 +122,8 @@ do
     then
         #
         # It is possible to infinite loop, this will prevent that and log the error
-        load_count=$(($load_count+1))
+        echo "Acheived MAX LOAD" >> $ErrFILE
+	load_count=$(($load_count+1))
         if (( $load_count>=3 ));
         then
             cd $CD_PATH;
