@@ -62,7 +62,7 @@ trim_buffer () {
         cd $CD_PATH;
         touch buffer.txt;
         echo -e "$buffer" > buffer.txt;
-        sed -i '1,60d' buffer.txt;
+        sed -i '1,180d' buffer.txt;
         buffer="$(<buffer.txt)";
         rm buffer.txt;
         scount=$((0+0));
